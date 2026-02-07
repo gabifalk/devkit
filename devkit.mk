@@ -32,45 +32,43 @@ SHAHASH = $(shell echo $(AGENT) $(sort $(DEVPKGS)) | sha256sum | cut -f1 -d\ )
 get-image-id       = $(shell $(PODMAN) image list --filter label=local.devkit.hash=$(SHAHASH) --format '{{.Id}}')
 get-github-release = $(shell $(CURL) --silent --head --show-headers --no-location '$(1)' | sed -n 's,^location:.*/tag/v\?,,p')
 
+ubuntu.packages.npm = npm
+ubuntu.packages.scr = bash curl
+
 AGENT.copilot.HOME     = https://github.com/github/copilot-cli/releases/latest
 AGENT.copilot.VERSION  = $(call get-github-release,$(AGENT.copilot.HOME))
-AGENT.copilot.URL      = $(AGENT.copilot.HOME)/download/copilot-linux-x64.tar.gz
-AGENT.copilot.SRCTYPE  = tgz
+AGENT.copilot.URL      = https://gh.io/copilot-install
+AGENT.copilot.SRCTYPE  = scr
 AGENT.copilot.BIN      = copilot
 AGENT.copilot.CONFDIR  = .copilot
-AGENT.copilot.BASE     = docker.io/library/ubuntu:latest
 
 AGENT.codex.HOME       = https://github.com/openai/codex/releases/latest
 AGENT.codex.VERSION    = $(call get-github-release,$(AGENT.codex.HOME))
-AGENT.codex.URL        = $(AGENT.codex.HOME)/download/codex-x86_64-unknown-linux-gnu.tar.gz
-AGENT.codex.SRCTYPE    = tgz
-AGENT.codex.BIN        = codex-x86_64-unknown-linux-gnu
+AGENT.codex.URL        = @openai/codex
+AGENT.codex.SRCTYPE    = npm
+AGENT.codex.BIN        = codex
 AGENT.codex.CONFDIR    = .codex
-AGENT.codex.BASE       = docker.io/library/ubuntu:latest
 
 AGENT.opencode.HOME    = https://github.com/anomalyco/opencode/releases/latest
 AGENT.opencode.VERSION = $(call get-github-release,$(AGENT.opencode.HOME))
-AGENT.opencode.URL     = $(AGENT.opencode.HOME)/download/opencode-linux-x64.tar.gz
-AGENT.opencode.SRCTYPE = tgz
+AGENT.opencode.URL     = https://opencode.ai/install
+AGENT.opencode.SRCTYPE = scr
 AGENT.opencode.BIN     = opencode
 AGENT.opencode.CONFDIR = .config/opencode
-AGENT.opencode.BASE    = docker.io/library/ubuntu:latest
 
 AGENT.gemini.HOME      = https://github.com/google-gemini/gemini-cli/releases/latest
 AGENT.gemini.VERSION   = $(call get-github-release,$(AGENT.gemini.HOME))
-AGENT.gemini.URL       =
-AGENT.gemini.SRCTYPE   =
+AGENT.gemini.URL       = @google/gemini-cli
+AGENT.gemini.SRCTYPE   = npm
 AGENT.gemini.BIN       = gemini
 AGENT.gemini.CONFDIR   = .gemini
-AGENT.gemini.BASE      = us-docker.pkg.dev/gemini-code-dev/gemini-cli/sandbox:$(AGENT.gemini.VERSION)
 
 AGENT.claude.HOME      = https://github.com/anthropics/claude-code/releases/latest
 AGENT.claude.VERSION   = $(call get-github-release,$(AGENT.claude.HOME))
-AGENT.claude.URL       = https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/$(AGENT.claude.VERSION)/linux-x64/claude
-AGENT.claude.SRCTYPE   = bin
+AGENT.claude.URL       = https://claude.ai/install.sh
+AGENT.claude.SRCTYPE   = scr
 AGENT.claude.BIN       = claude
 AGENT.claude.CONFDIR   = .claude
-AGENT.claude.BASE      = docker.io/library/ubuntu:latest
 
 .PHONY: _check-image _create-image help init clean check upgrade list bash run
 .ONESHELL:
@@ -106,14 +104,13 @@ init:
 
 _create-image:
 	$(Q)[ -n "$(get-image-id)" ] || printf '%s\n' \
-	  "FROM $(AGENT.$(AGENT).BASE)" \
+	  "FROM docker.io/library/ubuntu:latest" \
 	  "USER root" \
 	  "RUN apt-get -y -q update" \
-	  "RUN apt-get -y -q install $(sort ca-certificates bash curl tar $(DEVPKGS))" \
+	  "RUN apt-get -y -q install $(sort ca-certificates bash curl tar $(DEVPKGS) $(ubuntu.packages.$(AGENT.$(AGENT).SRCTYPE)))" \
 	  "RUN apt-get -y -q clean; rm -rf /var/lib/apt/lists/*" \
-	  "RUN [ '$(words $(AGENT.$(AGENT).URL))' -eq 0 ] || [ '$(AGENT.$(AGENT).SRCTYPE)' != 'tgz' ] || { curl -fsSL '$(AGENT.$(AGENT).URL)' | tar -C '/usr/local/bin' -zxf-; }" \
-	  "RUN [ '$(words $(AGENT.$(AGENT).URL))' -eq 0 ] || [ '$(AGENT.$(AGENT).SRCTYPE)' != 'bin' ] || { curl -fsSL '$(AGENT.$(AGENT).URL)' > '/usr/local/bin/$(AGENT.$(AGENT).BIN)'; }" \
-	  "RUN chmod 755 '/usr/local/bin/$(AGENT.$(AGENT).BIN)'" \
+	  "RUN [ '$(AGENT.$(AGENT).SRCTYPE)' != 'npm' ] || { npm install -g '$(AGENT.$(AGENT).URL)'; }" \
+	  "RUN [ '$(AGENT.$(AGENT).SRCTYPE)' != 'scr' ] || { curl -fsSL '$(AGENT.$(AGENT).URL)' | bash; }" \
 	  "LABEL local.devkit.name=$(DEVNAME)" \
 	  "LABEL local.devkit.hash=$(SHAHASH)" \
 	  "LABEL local.devkit.agent=$(AGENT)" \
