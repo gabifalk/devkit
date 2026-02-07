@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026  Alexey Gladkov <gladkov.alexey@gmail.com>
+.PHONY: _check-image _create-image help init clean clean-all check upgrade list bash run
+.ONESHELL:
 
 CURNAME = devkit
 CURFILE = $(lastword $(MAKEFILE_LIST))
@@ -19,7 +21,9 @@ $(call require-utility,CURL,curl)
 GITPROJDIR = $(shell $(GIT) rev-parse --show-toplevel 2>/dev/null)
 PROJNAME   = $(notdir $(GITPROJDIR))
 
-$(if $(PROJNAME),,$(error Unable to locate the git repository.))
+ifeq ($(filter help clean clean-all list,$(MAKECMDGOALS)),)
+$(if $(PROJNAME),,$(error Unable to locate the git repository))
+endif
 
 DEF_AGENT = copilot
 DEF_DEVNAME = $(PROJNAME)
@@ -69,9 +73,6 @@ AGENT.claude.URL       = https://claude.ai/install.sh
 AGENT.claude.SRCTYPE   = scr
 AGENT.claude.BIN       = claude
 AGENT.claude.CONFDIR   = .claude
-
-.PHONY: _check-image _create-image help init clean check upgrade list bash run
-.ONESHELL:
 
 help:
 	@echo ""
