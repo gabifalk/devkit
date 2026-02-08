@@ -81,11 +81,16 @@ _create-image:
 	$(Q)[ -n "$(get-image-id)" ] || printf '%s\n' \
 	  "FROM docker.io/library/ubuntu:latest" \
 	  "USER root" \
+	  "ENV XDG_DATA_HOME=/usr/local/share" \
+	  "ENV XDG_CONFIG_HOME=/etc" \
+	  "ENV XDG_CACHE_HOME=/var/cache" \
 	  "RUN apt-get -y -q update" \
 	  "RUN apt-get -y -q install $(sort ca-certificates bash curl tar $(DEVPKGS) $(ubuntu.packages.$(INST)))" \
 	  "RUN apt-get -y -q clean; rm -rf /var/lib/apt/lists/*" \
+	  "RUN rm -rf /root/.local; ln -s /usr/local /root/.local" \
 	  "RUN [ '$(INST)' != 'npm' ] || { npm install -g '$(LINK)'; }" \
 	  "RUN [ '$(INST)' != 'scr' ] || { curl -fsSL '$(LINK)' | bash; }" \
+	  'RUN bin="`command -v $(BIN)`" || exit 1; [ "$$bin" = "/usr/local/bin/$(BIN)" ] || ln -vs -- "$$bin" "/usr/local/bin/$(BIN)"' \
 	  "LABEL local.devkit.name=$(DEVNAME)" \
 	  "LABEL local.devkit.hash=$(SHAHASH)" \
 	  "LABEL local.devkit.agent=$(AGENT)" \
