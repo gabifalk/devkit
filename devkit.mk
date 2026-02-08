@@ -100,7 +100,7 @@ _create-image:
 
 _check-image:
 	$(Q)[ -n "$(get-image-id)" ] || $(MAKE) -f "$(CURFILE)" _create-image
-	mkdir -p -- $(HOME)/$(CONFDIR)
+	[ -z '$(CONFDIR)' ] || mkdir -p -- $(HOME)/$(CONFDIR)
 
 ifneq ($(filter bash,$(MAKECMDGOALS)),)
 PODMAN_ARGS := --entrypoint=/bin/bash
