@@ -111,7 +111,8 @@ _create-image:
 	  "LABEL local.devkit.agent=$(AGENT)" \
 	  "LABEL local.devkit.agent.version=$(call get-github-release,$(HOMEURL))" \
 	  "ENTRYPOINT [\"/usr/local/bin/$(BIN)\"]" |
-	$(PODMAN) image build --squash --force-rm --format=docker -t "localhost/$(CURNAME)/$(DEVNAME):latest" -f-;
+	$(PODMAN) image build --squash --force-rm --format=docker --file=- \
+	  --tag="localhost/$(CURNAME)/$(DEVNAME):latest"
 
 _check-image:
 	$(Q)[ -n "$(get-image-id)" ] || $(MAKE) -f "$(CURFILE)" _create-image
@@ -129,11 +130,12 @@ ARGS = $(strip $(eval found :=)$(foreach w,$(MAKECMDGOALS),$(if $(found),$(w),$(
 endif
 
 run: _check-image
-	$(Q)$(PODMAN) container run \
+	$(Q)$(PODMAN) container run --name '$(AGENT)-for-$(PROJNAME)' \
 	  $(addprefix --volume=,$(PODMAN_VOLUMES)) \
+	  --rm --tty --interactive --log-driver=none \
+	  --network=host --userns=keep-id --user='$(UID):$(GID)' \
 	  --workdir='/srv/$(PROJNAME)' \
-	  --network=host --userns=keep-id --user "$(UID):$(GID)" \
-	  --rm --tty --interactive $(PODMAN_ARGS) -- "$(get-image-id)" $(ARGS)
+	  $(PODMAN_ARGS) -- '$(get-image-id)' $(ARGS)
 
 bash: run
 	@:
