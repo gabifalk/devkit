@@ -94,24 +94,24 @@ _create-image:
 	$(Q)[ -n "$(get-image-id)" ] || printf '%s\n' \
 	  "FROM docker.io/library/ubuntu:latest" \
 	  "USER root" \
+	  'ENV PATH=/root/bin:/root/.local/bin:$$PATH' \
+	  'SHELL ["/bin/bash", "-eo", "pipefail", "-c"]' \
 	  'RUN min="`sed -ne 's,^UID_MIN[[:space:]]*,,p' /etc/login.defs`"; getent passwd | while IFS=: read -r name _ uid _; do [ "$$uid" -lt "$$min" ] || userdel -rf "$$name"; done' \
-	  "RUN groupadd -g '$(GID)' user && useradd --uid='$(UID)' --gid='$(GID)' -d /home/user -m user" \
-	  "ENV XDG_DATA_HOME=/usr/local/share" \
-	  "ENV XDG_CONFIG_HOME=/etc" \
-	  "ENV XDG_CACHE_HOME=/var/cache" \
+	  "RUN groupadd -g '$(GID)' user; useradd --uid='$(UID)' --gid='$(GID)' -d /home/user -m user" \
 	  "RUN apt-get -y -q update" \
 	  "RUN apt-get -y -q install $(sort ca-certificates bash curl tar $(DEVPKGS) $(ubuntu.packages.$(INST)))" \
 	  "RUN apt-get -y -q clean; rm -rf /var/lib/apt/lists/*" \
-	  "RUN rm -rf /root/.local; ln -s /usr/local /root/.local" \
+	  'RUN find /root -type d | xargs -r chmod -R g+rx,o+rx' \
 	  "RUN [ '$(INST)' != 'npm' ] || { npm install -g '$(LINK)'; }" \
 	  "RUN [ '$(INST)' != 'scr' ] || { curl -fsSL '$(LINK)' | bash; }" \
-	  'RUN bin="`command -v $(BIN)`" || exit 1; [ "$$bin" = "/usr/local/bin/$(BIN)" ] || ln -vs -- "$$bin" "/usr/local/bin/$(BIN)"' \
+	  'SHELL ["/bin/bash", "-eio", "pipefail", "-c"]' \
+	  'RUN bin="`command -v $(BIN)`"; [ "$$bin" = "/usr/local/bin/$(BIN)" ] || ln -vs -- "$$bin" "/usr/local/bin/$(BIN)"' \
 	  "LABEL local.devkit.name=$(DEVNAME)" \
 	  "LABEL local.devkit.hash=$(SHAHASH)" \
 	  "LABEL local.devkit.agent=$(AGENT)" \
 	  "LABEL local.devkit.agent.version=$(call get-github-release,$(HOMEURL))" \
 	  "ENTRYPOINT [\"/usr/local/bin/$(BIN)\"]" |
-	$(PODMAN) image build --squash --force-rm -t "localhost/$(CURNAME)/$(DEVNAME):latest" -f-;
+	$(PODMAN) image build --squash --force-rm --format=docker -t "localhost/$(CURNAME)/$(DEVNAME):latest" -f-;
 
 _check-image:
 	$(Q)[ -n "$(get-image-id)" ] || $(MAKE) -f "$(CURFILE)" _create-image
