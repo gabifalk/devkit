@@ -26,6 +26,9 @@ ifeq ($(filter help clean clean-all list,$(MAKECMDGOALS)),)
 $(if $(PROJNAME),,$(error Unable to locate the git repository))
 endif
 
+UID = $(shell id -u)
+GID = $(shell id -g)
+
 DEF_AGENT = copilot
 DEF_DEVNAME = $(PROJNAME)
 
@@ -34,7 +37,7 @@ AGENT   = $(shell $(GIT) config get       devkit.agent    || echo $(DEF_AGENT))
 DEVNAME = $(shell $(GIT) config get       devkit.name     || echo $(DEF_DEVNAME))
 DEVPKGS = $(shell $(GIT) config get --all devkit.packages)
 VOLUMES = $(shell $(GIT) config get --all devkit.volumes)
-SHAHASH = $(shell echo $(AGENT) $(sort $(DEVPKGS)) | sha256sum | cut -f1 -d\ )
+SHAHASH = $(shell echo $(UID):$(GID) $(AGENT) $(sort $(DEVPKGS)) | sha256sum | cut -f1 -d\ )
 endif
 
 get-image-id       = $(shell $(PODMAN) image list --filter label=local.devkit.hash=$(SHAHASH) --format '{{.Id}}')
@@ -53,8 +56,8 @@ AGENT.codex    = HOMEURL=https://github.com/openai/codex/releases/latest        
 $(foreach f,HOMEURL INST LINK BIN CONFDIR,$(eval $(f)=$(patsubst $(f)=%,%,$(filter $(f)=%,$(AGENT.$(AGENT))))))
 
 PODMAN_VOLUMES = \
-	$(GITPROJDIR):/srv/$(PROJNAME):rw \
-	$(HOME)/$(CONFDIR):/root/$(CONFDIR):rw \
+	$(GITPROJDIR):/srv/$(PROJNAME):rw,Z \
+	$(HOME)/$(CONFDIR):/home/user/$(CONFDIR):rw,Z \
 	$(VOLUMES)
 
 help:
@@ -91,6 +94,8 @@ _create-image:
 	$(Q)[ -n "$(get-image-id)" ] || printf '%s\n' \
 	  "FROM docker.io/library/ubuntu:latest" \
 	  "USER root" \
+	  'RUN min="`sed -ne 's,^UID_MIN[[:space:]]*,,p' /etc/login.defs`"; getent passwd | while IFS=: read -r name _ uid _; do [ "$$uid" -lt "$$min" ] || userdel -rf "$$name"; done' \
+	  "RUN groupadd -g '$(GID)' user && useradd --uid='$(UID)' --gid='$(GID)' -d /home/user -m user" \
 	  "ENV XDG_DATA_HOME=/usr/local/share" \
 	  "ENV XDG_CONFIG_HOME=/etc" \
 	  "ENV XDG_CACHE_HOME=/var/cache" \
@@ -127,7 +132,7 @@ run: _check-image
 	$(Q)$(PODMAN) container run \
 	  $(addprefix --volume=,$(PODMAN_VOLUMES)) \
 	  --workdir='/srv/$(PROJNAME)' \
-	  --network=host \
+	  --network=host --userns=keep-id --user "$(UID):$(GID)" \
 	  --rm --tty --interactive $(PODMAN_ARGS) -- "$(get-image-id)" $(ARGS) || \
 	  echo "container exit status $$?"
 
