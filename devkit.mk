@@ -133,8 +133,7 @@ run: _check-image
 	  $(addprefix --volume=,$(PODMAN_VOLUMES)) \
 	  --workdir='/srv/$(PROJNAME)' \
 	  --network=host --userns=keep-id --user "$(UID):$(GID)" \
-	  --rm --tty --interactive $(PODMAN_ARGS) -- "$(get-image-id)" $(ARGS) || \
-	  echo "container exit status $$?"
+	  --rm --tty --interactive $(PODMAN_ARGS) -- "$(get-image-id)" $(ARGS)
 
 bash: run
 	@:
