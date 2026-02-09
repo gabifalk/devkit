@@ -1,0 +1,41 @@
+name: "CI"
+on:
+  push:
+    branches:
+      - "master"
+      - "for-master"
+      - "patchset/**"
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        agent:
+          - aider
+          - claude
+          - codex
+          - copilot
+          - gemini
+          - opencode
+      fail-fast: false
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Prepare"
+        run: sudo chmod 666 /dev/tty60
+
+      - name: "Configure"
+        run: |
+          ./devkit.sh init
+
+          git config set devkit.agent ${{ matrix.agent }}
+          git config set devkit.name simple
+          git config set --append devkit.packages git
+          git config set --append devkit.packages jq
+
+      - name: "Check"
+        run: |
+          ./devkit.sh bash ARGS='-c "stat /usr/local/bin/${{ matrix.agent }}"'    </dev/tty60
+          ./devkit.sh bash ARGS='-c "test -x /usr/local/bin/${{ matrix.agent }}"' </dev/tty60
+          ./devkit.sh bash ARGS='-c "command -v jq"'                              </dev/tty60
