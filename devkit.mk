@@ -31,10 +31,12 @@ GID := $(shell id -g)
 
 DEF_AGENT = copilot
 DEF_DEVNAME = $(PROJNAME)
+DEF_DEVSHELL = /bin/bash
 
 ifneq ($(GITPROJDIR),)
 AGENT   = $(shell $(GIT) config get       devkit.agent    || echo $(DEF_AGENT))
 DEVNAME = $(shell $(GIT) config get       devkit.name     || echo $(DEF_DEVNAME))
+DEVSHELL= $(shell $(GIT) config get       devkit.shell    || echo $(DEF_DEVSHELL))
 DEVPKGS = $(shell $(GIT) config get --all devkit.packages)
 VOLUMES = $(shell $(GIT) config get --all devkit.volumes)
 SHAHASH = $(shell echo $(UID):$(GID) $(AGENT) $(sort $(DEVPKGS)) | sha256sum | cut -f1 -d\ )
@@ -119,7 +121,7 @@ _check-image:
 	[ -z '$(CONFDIR)' ] || mkdir -p -- $(HOME)/$(CONFDIR)
 
 ifneq ($(filter shell,$(MAKECMDGOALS)),)
-PODMAN_ARGS := --entrypoint=/bin/bash
+PODMAN_ARGS := --entrypoint=$(DEVSHELL)
 endif
 
 ifneq ($(filter run,$(MAKECMDGOALS)),)
