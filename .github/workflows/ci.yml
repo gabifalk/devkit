@@ -39,3 +39,7 @@ jobs:
           ./devkit.sh bash ARGS='-c "stat /usr/local/bin/${{ matrix.agent }}"'    </dev/tty60
           ./devkit.sh bash ARGS='-c "test -x /usr/local/bin/${{ matrix.agent }}"' </dev/tty60
           ./devkit.sh bash ARGS='-c "command -v jq"'                              </dev/tty60
+
+      - name: "Version"
+        run: |
+          [ '${{ matrix.agent }}' = 'gemini' ] || ./devkit.sh run --version
