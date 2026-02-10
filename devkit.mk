@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026  Alexey Gladkov <gladkov.alexey@gmail.com>
-.PHONY: _check-image _create-image help init clean clean-all check upgrade list bash run
+.PHONY: _check-image _create-image help init clean clean-all check upgrade list shell run
 .ONESHELL:
 
 CURNAME = devkit
@@ -62,7 +62,7 @@ PODMAN_VOLUMES = \
 
 help:
 	@echo ""
-	echo "Usage: $(PROG) [ help$(foreach x,init clean check upgrade list bash, | $(x)) ]"
+	echo "Usage: $(PROG) [ help$(foreach x,init clean check upgrade list shell, | $(x)) ]"
 	echo "   or: $(PROG) run [agent arguments]"
 	echo ""
 	echo "The project allows you to manage isolated containers with AI agents."
@@ -72,7 +72,7 @@ help:
 	echo " list        shows all devkit known images."
 	echo " check       shows current and available agent versions."
 	echo " upgrade     upgrades podman image for current devkit."
-	echo " bash        run /bin/bash inside devkit container."
+	echo " shell       run shell inside devkit container."
 	echo " run         starts devkit container."
 	echo " clean       deletes all images for the current devkit."
 	echo " clean-all   deletes all devkit images."
@@ -118,7 +118,7 @@ _check-image:
 	$(Q)[ -n "$(get-image-id)" ] || $(MAKE) -f "$(CURFILE)" _create-image
 	[ -z '$(CONFDIR)' ] || mkdir -p -- $(HOME)/$(CONFDIR)
 
-ifneq ($(filter bash,$(MAKECMDGOALS)),)
+ifneq ($(filter shell,$(MAKECMDGOALS)),)
 PODMAN_ARGS := --entrypoint=/bin/bash
 endif
 
@@ -146,7 +146,7 @@ run: _check-image
 	    -- '$(AGENT)-for-$(PROJNAME)' /bin/bash $(ARGS);
 	fi
 
-bash: run
+shell: run
 	@:
 
 check:
